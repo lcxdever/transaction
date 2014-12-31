@@ -1,6 +1,9 @@
 package com.blackbread.service;
 
-public interface TestService {
+import java.sql.SQLException;
 
-	public void insert();
+import com.blackbread.exception.MyException;
+
+public interface TestService {
+	public void insert(String name) throws SQLException, MyException;
 }

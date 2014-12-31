@@ -10,16 +10,28 @@ public class ConnectionHolder {
 	private static ThreadLocal<Stack<Connection>> connHolder = new ThreadLocal<Stack<Connection>>();
 
 	public static Connection getConnetion() throws SQLException {
-		Connection conn = connHolder.get().peek();
-		if (conn == null) {
+		Stack<Connection> stack = connHolder.get();
+		if (stack == null) {
+			stack = new Stack<Connection>();
+			connHolder.set(stack);
+		}
+		Connection conn = null;
+		if (stack.size() == 0) {
 			conn = buildConnetion();
 			connHolder.get().push(conn);
+		} else {
+			conn = stack.peek();
 		}
 		return conn;
 	}
 
 	public static Connection getNewConnetion() throws SQLException {
 		Connection conn = buildConnetion();
+		Stack<Connection> stack = connHolder.get();
+		if (stack == null) {
+			stack = new Stack<Connection>();
+			connHolder.set(stack);
+		}
 		connHolder.get().push(conn);
 		return conn;
 	}
@@ -27,8 +39,11 @@ public class ConnectionHolder {
 	public static Connection buildConnetion() throws SQLException {
 		Connection conn = null;
 		try {
-			Class.forName("数据库驱动");
-			conn = DriverManager.getConnection("", "", "");
+			Class.forName("com.mysql.jdbc.Driver");
+			conn = DriverManager
+					.getConnection(
+							"jdbc:mysql://114.215.125.112:3306/pay?useUnicode=true&characterEncoding=utf8&autoReconnect=true",
+							"mapabc_pay", "mapabc_pay");
 		} catch (ClassNotFoundException e) {
 			throw new SQLException("数据库驱动异常");
 		} catch (SQLException e) {
@@ -38,13 +53,15 @@ public class ConnectionHolder {
 	}
 
 	public static void closeConnection() {
-		Connection conn = connHolder.get().pop();
-		if (conn != null) {
-			connHolder.remove();
-			try {
-				conn.close();
-			} catch (SQLException e) {
-				System.out.println("数据库链接关闭异常");
+		if (connHolder.get() != null && connHolder.get().size() > 0) {
+			Connection con = connHolder.get().pop();
+			if (con != null) {
+				connHolder.remove();
+				try {
+					con.close();
+				} catch (SQLException e) {
+					System.out.println("数据库链接关闭异常");
+				}
 			}
 		}
 	}

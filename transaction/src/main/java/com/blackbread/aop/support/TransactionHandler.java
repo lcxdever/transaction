@@ -1,13 +1,17 @@
 package com.blackbread.aop.support;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.Connection;
+import java.sql.SQLException;
 
 import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;
 
 import com.blackbread.annotation.Transactional;
+import com.blackbread.emun.Propagation;
+import com.blackbread.exception.MyException;
 
 public class TransactionHandler implements MethodInterceptor {
 	private Object target;
@@ -19,7 +23,8 @@ public class TransactionHandler implements MethodInterceptor {
 
 	public Object intercept(Object arg0, Method method, Object[] args,
 			MethodProxy times) throws Throwable {
-		Annotation[] anns = method.getAnnotations();
+		// method.g
+		Annotation[] anns = method.getDeclaredAnnotations();
 		Transactional transactional = null;
 		for (Annotation annotation : anns) {
 			if (annotation instanceof Transactional) {
@@ -38,23 +43,30 @@ public class TransactionHandler implements MethodInterceptor {
 	private Object doTrans(Method method, Object[] args,
 			Transactional transactional) throws Throwable {
 		Connection conn = null;
-		if (transactional.propagation().value() == 0) {
+		TransactionalHolder.push(transactional);
+		if (transactional.propagation() == Propagation.REQUIRED) {
 			conn = ConnectionHolder.getConnetion();
-		} else if (transactional.propagation().value() == 3) {
+		} else if (transactional.propagation() == Propagation.REQUIRES_NEW) {
 			conn = ConnectionHolder.getNewConnetion();
 		}
 		conn.setAutoCommit(false);
 		Object o = null;
 		try {
 			o = method.invoke(target, args);
-			conn.commit();
+			if (transactional.propagation() == Propagation.REQUIRES_NEW|| (transactional.propagation() == Propagation.REQUIRED&& TransactionalHolder.getSize() <2)) {
+				conn.commit();
+			}
 		} catch (Exception e) {
-			if (conn != null)
-				conn.rollback();
+//			if (transactional.propagation() == Propagation.REQUIRES_NEW|| (transactional.propagation() == Propagation.REQUIRED&& TransactionalHolder.getSize() <2)) {
+			conn.rollback();
+//			}
 			System.out.println("事务处理中异常，事务回滚");
-			throw e;
+			throw e.getCause();
 		} finally {
-			ConnectionHolder.closeConnection();
+			if (transactional.propagation() == Propagation.REQUIRES_NEW|| (transactional.propagation() == Propagation.REQUIRED&& TransactionalHolder.getSize() <2)) {
+				conn.close();
+			}
+			TransactionalHolder.pop();
 		}
 		return o;
 	}

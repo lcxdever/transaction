@@ -20,7 +20,8 @@ import java.lang.annotation.Target;
  * limitations under the License.
  */
 
-import com.blackbread.dao.imp.Isolation;
+
+import com.blackbread.emun.Isolation;
 import com.blackbread.emun.Propagation;
 
 @Target({ElementType.METHOD, ElementType.TYPE})
