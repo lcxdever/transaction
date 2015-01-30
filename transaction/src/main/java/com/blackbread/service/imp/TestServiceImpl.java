@@ -17,8 +17,8 @@ public class TestServiceImpl implements TestService {
 	@Transactional(propagation = Propagation.REQUIRED)
 	public void insert(String name) throws SQLException {
 		us = (UserService) InitBeans.getInstance().getBean("userService");
-			tDao.insert(name);
-			us.insert("2222");
+		tDao.insert(name);
+		us.insert("2222");
 
 	}
 
